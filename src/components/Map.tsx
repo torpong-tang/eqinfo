@@ -78,9 +78,17 @@ interface MapProps {
   earthquakes: Earthquake[];
   center: [number, number];
   zoom: number;
+  selectedEarthquakeId?: string | null;
+  onSelect?: (earthquake: Earthquake) => void;
 }
 
-export default function EarthquakeMap({ earthquakes, center, zoom }: MapProps) {
+export default function EarthquakeMap({
+  earthquakes,
+  center,
+  zoom,
+  selectedEarthquakeId = null,
+  onSelect
+}: MapProps) {
   const [mounted, setMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
 
@@ -144,15 +152,17 @@ export default function EarthquakeMap({ earthquakes, center, zoom }: MapProps) {
 
   const markerIconCache = useMemo(() => new Map<string, DivIcon>(), []);
 
-  const getMarkerIcon = (magnitude: number) => {
+  const getMarkerIcon = (magnitude: number, isSelected: boolean) => {
     if (!leaflet) return undefined;
-    const size = Math.round(10 + magnitude * 4);
-    const key = `${magnitude}-${size}`;
+    const size = Math.round(10 + magnitude * 4 + (isSelected ? 4 : 0));
+    const key = `${magnitude}-${size}-${isSelected ? 'selected' : 'default'}`;
     const cached = markerIconCache.get(key);
     if (cached) return cached;
 
+    const ringColor = isSelected ? '#2563eb' : '#ffffff';
+    const shadow = isSelected ? '0 0 0 3px rgba(37, 99, 235, 0.35)' : 'none';
     const icon = leaflet.divIcon({
-      html: `<div style="width:${size}px;height:${size}px;background:${getMarkerColor(magnitude)};border:2px solid #ffffff;border-radius:50%;opacity:0.85;"></div>`,
+      html: `<div style="width:${size}px;height:${size}px;background:${getMarkerColor(magnitude)};border:2px solid ${ringColor};border-radius:50%;opacity:0.9;box-shadow:${shadow};"></div>`,
       className: 'eq-marker',
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
@@ -195,7 +205,12 @@ export default function EarthquakeMap({ earthquakes, center, zoom }: MapProps) {
           <Marker
             key={earthquake.id}
             position={[earthquake.lat, earthquake.lng]}
-            icon={getMarkerIcon(earthquake.magnitude)}
+            icon={getMarkerIcon(earthquake.magnitude, earthquake.id === selectedEarthquakeId)}
+            eventHandlers={{
+              click: () => {
+                onSelect?.(earthquake);
+              }
+            }}
           >
             <Popup>
               <div className="text-sm p-2 text-slate-900">

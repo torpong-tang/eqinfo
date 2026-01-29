@@ -61,6 +61,7 @@ export default function Home() {
     zoom: 2
   });
   const [selectedModalEq, setSelectedModalEq] = useState<Earthquake | null>(null);
+  const [selectedEarthquakeId, setSelectedEarthquakeId] = useState<string | null>(null);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function Home() {
       setCurrentPage(1);
       setSearchTerm('');
       setMagnitudeFilter('all');
+      setSelectedEarthquakeId(null);
       setMapView({
         center: [13.7563, 100.5018],
         zoom: 6
@@ -141,6 +143,7 @@ export default function Home() {
       setCurrentPage(1);
       setSearchTerm('');
       setMagnitudeFilter('all');
+      setSelectedEarthquakeId(null);
       setMapView({
         center: [20, 0],
         zoom: 2
@@ -168,6 +171,7 @@ export default function Home() {
     setSearchTerm('');
     setMagnitudeFilter('all');
     setSelectedModalEq(null);
+    setSelectedEarthquakeId(null);
   };
 
   const handleMagnitudeFilter = (filter: 'all' | 'high' | 'mid' | 'low') => {
@@ -183,6 +187,16 @@ export default function Home() {
       return eq.magnitude < 3.0;
     });
   }, [earthquakes, magnitudeFilter]);
+
+  const magnitudeCounts = useMemo(() => {
+    const counts = { all: earthquakes.length, high: 0, mid: 0, low: 0 };
+    earthquakes.forEach((eq) => {
+      if (eq.magnitude >= 5.0) counts.high += 1;
+      else if (eq.magnitude >= 3.0) counts.mid += 1;
+      else counts.low += 1;
+    });
+    return counts;
+  }, [earthquakes]);
 
   const filteredEarthquakes = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -222,6 +236,17 @@ export default function Home() {
     return data;
   }, [filteredEarthquakes, sortBy, sortDir]);
 
+  const selectEarthquake = (eq: Earthquake, openModal = false) => {
+    setSelectedEarthquakeId(eq.id);
+    if (openModal) {
+      setSelectedModalEq(eq);
+    }
+    const index = sortedEarthquakes.findIndex((item) => item.id === eq.id);
+    if (index >= 0) {
+      setCurrentPage(Math.floor(index / pageSize) + 1);
+    }
+  };
+
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(sortedEarthquakes.length / pageSize)),
     [sortedEarthquakes.length, pageSize]
@@ -237,6 +262,14 @@ export default function Home() {
     const start = (currentPage - 1) * pageSize;
     return sortedEarthquakes.slice(start, start + pageSize);
   }, [sortedEarthquakes, currentPage, pageSize]);
+
+  useEffect(() => {
+    if (!selectedEarthquakeId) return;
+    if (!filteredEarthquakes.some((eq) => eq.id === selectedEarthquakeId)) {
+      setSelectedEarthquakeId(null);
+      setSelectedModalEq(null);
+    }
+  }, [filteredEarthquakes, selectedEarthquakeId]);
 
   const pageNumbers = useMemo(() => {
     const pages: (number | string)[] = [];
@@ -265,15 +298,18 @@ export default function Home() {
         visitorCount={visitorCount}
         magnitudeFilter={magnitudeFilter}
         onMagnitudeFilterChange={handleMagnitudeFilter}
+        magnitudeCounts={magnitudeCounts}
       />
       
       <div className="flex-1 p-4" suppressHydrationWarning>
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {selectedSource ? (
             <Map
-              earthquakes={magnitudeFiltered}
+              earthquakes={filteredEarthquakes}
               center={mapView.center}
               zoom={mapView.zoom}
+              selectedEarthquakeId={selectedEarthquakeId}
+              onSelect={(eq) => selectEarthquake(eq)}
             />
           ) : (
             <div className="h-[70vh] min-h-[500px] flex items-center justify-center bg-gray-50">
@@ -326,7 +362,8 @@ export default function Home() {
                     ล้างค้นหา
                   </button>
                 )}
-                <span className="text-sm text-gray-600">รวม {filteredEarthquakes.length} รายการ</span>
+                <span className="text-sm text-gray-600">ทั้งหมดจากแหล่งข้อมูล {earthquakes.length} รายการ</span>
+                <span className="text-sm text-gray-600">ตามสีขนาด {magnitudeFiltered.length} รายการ</span>
                 {lastUpdated && (
                   <span className="text-sm text-gray-500">อัปเดตล่าสุด {lastUpdated}</span>
                 )}
@@ -383,14 +420,15 @@ export default function Home() {
                     pagedEarthquakes.map((eq) => (
                       <tr
                         key={eq.id}
-                        className="group border-t border-gray-200 last:border-b hover:bg-gray-50 cursor-pointer focus-within:bg-blue-50"
-                        onClick={() => setSelectedModalEq(eq)}
+                        className={`group border-t border-gray-200 last:border-b hover:bg-gray-50 cursor-pointer focus-within:bg-blue-50 ${eq.id === selectedEarthquakeId ? 'bg-blue-50' : ''}`}
+                        onClick={() => selectEarthquake(eq, true)}
                         role="button"
                         tabIndex={0}
+                        aria-selected={eq.id === selectedEarthquakeId}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            setSelectedModalEq(eq);
+                            selectEarthquake(eq, true);
                           }
                         }}
                       >

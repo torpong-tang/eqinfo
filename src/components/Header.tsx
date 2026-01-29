@@ -11,6 +11,12 @@ interface HeaderProps {
   visitorCount: number | null;
   magnitudeFilter: 'all' | 'high' | 'mid' | 'low';
   onMagnitudeFilterChange: (filter: 'all' | 'high' | 'mid' | 'low') => void;
+  magnitudeCounts: {
+    all: number;
+    high: number;
+    mid: number;
+    low: number;
+  };
 }
 
 export default function Header({ 
@@ -21,7 +27,8 @@ export default function Header({
   earthquakeCount,
   visitorCount,
   magnitudeFilter,
-  onMagnitudeFilterChange
+  onMagnitudeFilterChange,
+  magnitudeCounts
 }: HeaderProps) {
   const isActive = (filter: 'all' | 'high' | 'mid' | 'low') => magnitudeFilter === filter;
 
@@ -79,7 +86,7 @@ export default function Header({
                 : 'border-white/40 text-white/90 hover:bg-white/10'
             }`}
           >
-            ทั้งหมด
+            ทั้งหมด <span className="ml-1 text-xs opacity-80">({magnitudeCounts.all})</span>
           </button>
           <button
             onClick={() => onMagnitudeFilterChange('high')}
@@ -90,7 +97,7 @@ export default function Header({
             }`}
           >
             <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-            มากกว่า 5.0
+            มากกว่า 5.0 <span className="text-xs opacity-80">({magnitudeCounts.high})</span>
           </button>
           <button
             onClick={() => onMagnitudeFilterChange('mid')}
@@ -101,7 +108,7 @@ export default function Header({
             }`}
           >
             <span className="w-3 h-3 bg-yellow-400 rounded-full"></span>
-            3.0 - 5.0
+            3.0 - 5.0 <span className="text-xs opacity-80">({magnitudeCounts.mid})</span>
           </button>
           <button
             onClick={() => onMagnitudeFilterChange('low')}
@@ -112,7 +119,7 @@ export default function Header({
             }`}
           >
             <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-            น้อยกว่า 3.0
+            น้อยกว่า 3.0 <span className="text-xs opacity-80">({magnitudeCounts.low})</span>
           </button>
         </div>
       </div>
