@@ -9,7 +9,7 @@ export interface Earthquake {
   url: string;
 }
 
-export type DataSource = 'thai' | 'asia' | null;
+export type DataSource = 'world' | 'asia' | null;
 
 export interface MapViewState {
   center: [number, number];

@@ -4,7 +4,7 @@ import type { DivIcon } from 'leaflet';
 import type { FeatureLayer } from 'esri-leaflet';
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Earthquake } from '@/types/earthquake';
+import { Earthquake, DataSource } from '@/types/earthquake';
 import { useMap } from 'react-leaflet';
 import { formatDateTh } from '@/lib/formatters';
 
@@ -29,10 +29,26 @@ const Marker = dynamic(
 );
 
 
-const Polyline = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Polyline),
+const Rectangle = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Rectangle),
   { ssr: false }
 );
+
+const GeoJSONLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.GeoJSON),
+  { ssr: false }
+);
+
+const Pane = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Pane),
+  { ssr: false }
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isFeature = (value: unknown): value is { type: 'Feature' } =>
+  isRecord(value) && value.type === 'Feature';
 
 function PlateBoundariesLayer() {
   const map = useMap();
@@ -78,6 +94,7 @@ interface MapProps {
   earthquakes: Earthquake[];
   center: [number, number];
   zoom: number;
+  selectedSource: DataSource;
   selectedEarthquakeId?: string | null;
   onSelect?: (earthquake: Earthquake) => void;
 }
@@ -86,46 +103,53 @@ export default function EarthquakeMap({
   earthquakes,
   center,
   zoom,
+  selectedSource,
   selectedEarthquakeId = null,
   onSelect
 }: MapProps) {
   const [mounted, setMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
+  const [asiaGeoJson, setAsiaGeoJson] = useState<{ type: 'FeatureCollection'; features: unknown[] } | null>(null);
+  const [isAsiaLayerLoading, setIsAsiaLayerLoading] = useState(false);
 
-  const ringOfFirePath: [number, number][] = [
-    [60, -150],
-    [55, -140],
-    [50, -135],
-    [45, -130],
-    [40, -125],
-    [35, -120],
-    [30, -115],
-    [25, -110],
-    [20, -105],
-    [15, -100],
-    [10, -95],
-    [5, -90],
-    [0, -85],
-    [-10, -80],
-    [-20, -75],
-    [-30, -75],
-    [-40, -74],
-    [-50, -73],
-    [-55, -70],
-    [-55, -50],
-    [-50, -30],
-    [-40, -10],
-    [-30, 5],
-    [-20, 20],
-    [-10, 40],
-    [0, 60],
-    [10, 90],
-    [20, 110],
-    [30, 130],
-    [40, 145],
-    [50, 160],
-    [55, 170],
+  const worldBounds: [[number, number], [number, number]] = [
+    [-85, -180],
+    [85, 180]
   ];
+
+  useEffect(() => {
+    if (selectedSource !== 'asia') return;
+    if (asiaGeoJson || isAsiaLayerLoading) return;
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const loadAsiaLayer = async () => {
+      try {
+        setIsAsiaLayerLoading(true);
+        const response = await fetch('/api/asia-geojson', { signal: controller.signal });
+        const payload = (await response.json()) as unknown;
+        if (isCancelled) return;
+        if (!isRecord(payload) || payload.type !== 'FeatureCollection' || !Array.isArray(payload.features)) {
+          return;
+        }
+        const validFeatures = payload.features.filter(isFeature);
+        setAsiaGeoJson({ type: 'FeatureCollection', features: validFeatures });
+      } catch (error) {
+        if ((error as { name?: string }).name === 'AbortError') return;
+        console.error('Failed to load Asia boundary:', error);
+      } finally {
+        if (!isCancelled) setIsAsiaLayerLoading(false);
+      }
+    };
+
+    loadAsiaLayer();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [selectedSource, asiaGeoJson, isAsiaLayerLoading]);
 
   useEffect(() => {
     setMounted(true);
@@ -194,10 +218,25 @@ export default function EarthquakeMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://www.esri.com/">Esri</a>'
         />
 
-        <Polyline
-          positions={ringOfFirePath}
-          pathOptions={{ color: '#dc2626', weight: 2, dashArray: '6 6', opacity: 0.9 }}
-        />
+        {selectedSource === 'world' && (
+          <Rectangle
+            bounds={worldBounds}
+            pathOptions={{ color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.05 }}
+          />
+        )}
+
+        {selectedSource === 'asia' && (
+          asiaGeoJson && (
+            <Pane name="asia-boundary" style={{ zIndex: 350 }}>
+              <GeoJSONLayer
+                data={asiaGeoJson}
+                style={{ color: '#8E51FF', weight: 1.5, fillColor: '#8E51FF', fillOpacity: 0.18, fillRule: 'evenodd' }}
+                pane="asia-boundary"
+                interactive={false}
+              />
+            </Pane>
+          )
+        )}
 
         <PlateBoundariesLayer />
 

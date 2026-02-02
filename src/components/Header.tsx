@@ -31,6 +31,12 @@ export default function Header({
   magnitudeCounts
 }: HeaderProps) {
   const isActive = (filter: 'all' | 'high' | 'mid' | 'low') => magnitudeFilter === filter;
+  const sourceNote =
+    selectedSource === 'world'
+      ? 'แหล่งข้อมูล: ทั่วโลก (24 ชม.)'
+      : selectedSource === 'asia'
+        ? 'แหล่งข้อมูล: เอเชีย (240 ชม.)'
+        : 'แหล่งข้อมูล: ยังไม่เลือก';
 
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg" suppressHydrationWarning>
@@ -41,20 +47,21 @@ export default function Header({
             <p className="text-blue-100">
               {isLoading ? 'กำลังโหลดข้อมูล...' : `พบ ${earthquakeCount} รายการ`}
               {visitorCount !== null && ` • ผู้เข้าชม ${visitorCount}`}
+              {` • ${sourceNote}`}
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
             <div className="flex bg-white/10 rounded-lg p-1 w-full sm:w-auto">
               <button
-                onClick={() => onSourceChange('thai')}
+                onClick={() => onSourceChange('world')}
                 className={`flex-1 sm:flex-none px-4 py-2 rounded-md transition-all duration-200 ${
-                  selectedSource === 'thai'
+                  selectedSource === 'world'
                     ? 'bg-white text-blue-800 font-semibold'
                     : 'text-white hover:bg-white/20'
                 }`}
               >
-                🇹🇭 ไทย
+                🌍 ทั่วโลก
               </button>
               <button
                 onClick={() => onSourceChange('asia')}

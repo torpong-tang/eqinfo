@@ -46,6 +46,11 @@ const parseUsgsFeatures = (data: unknown) => {
   return { features, hasInvalid: features.length !== data.features.length };
 };
 
+const getUsgsStartTime = (hoursAgo: number) => {
+  const date = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+  return date.toISOString();
+};
+
 export default function Home() {
   const [earthquakes, setEarthquakes] = useState<Earthquake[]>([]);
   const [selectedSource, setSelectedSource] = useState<DataSource>(null);
@@ -92,22 +97,44 @@ export default function Home() {
     );
   };
 
-  const fetchThaiData = async () => {
+  const fetchWorldData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/thai');
-      const data = await response.json();
-      setEarthquakes(data);
+      const startTime = getUsgsStartTime(24);
+      const response = await fetch(
+        `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&starttime=${startTime}`
+      );
+      const rawData = (await response.json()) as unknown;
+      const { features, hasInvalid } = parseUsgsFeatures(rawData);
+      if (hasInvalid) {
+        console.warn('Some USGS features were invalid and skipped.');
+      }
+
+      const normalizedData: Earthquake[] = features.map((feature) => {
+        const magnitude = typeof feature.properties.mag === 'number' ? feature.properties.mag : 0;
+        return {
+          id: feature.id,
+          magnitude,
+          place: feature.properties.place || 'ไม่ทราบสถานที่',
+          time: feature.properties.time,
+          lat: feature.geometry.coordinates[1],
+          lng: feature.geometry.coordinates[0],
+          depth: feature.geometry.coordinates[2],
+          url: feature.properties.url || '#'
+        };
+      });
+
+      setEarthquakes(normalizedData);
       setCurrentPage(1);
       setSearchTerm('');
       setMagnitudeFilter('all');
       setSelectedEarthquakeId(null);
       setMapView({
-        center: [13.7563, 100.5018],
-        zoom: 6
+        center: [10, 0],
+        zoom: 2
       });
     } catch (error) {
-      console.error('Error fetching Thai data:', error);
+      console.error('Error fetching world data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -116,8 +143,9 @@ export default function Home() {
   const fetchAsiaData = async () => {
     try {
       setIsLoading(true);
+      const startTime = getUsgsStartTime(240);
       const response = await fetch(
-        'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minlatitude=1&maxlatitude=77&minlongitude=26&maxlongitude=170&orderby=time'
+        `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minlatitude=1&maxlatitude=77&minlongitude=26&maxlongitude=170&orderby=time&starttime=${startTime}`
       );
       const rawData = (await response.json()) as unknown;
       const { features, hasInvalid } = parseUsgsFeatures(rawData);
@@ -157,8 +185,8 @@ export default function Home() {
 
   const handleSourceChange = (source: DataSource) => {
     setSelectedSource(source);
-    if (source === 'thai') {
-      fetchThaiData();
+    if (source === 'world') {
+      fetchWorldData();
     } else if (source === 'asia') {
       fetchAsiaData();
     }
@@ -308,6 +336,7 @@ export default function Home() {
               earthquakes={filteredEarthquakes}
               center={mapView.center}
               zoom={mapView.zoom}
+              selectedSource={selectedSource}
               selectedEarthquakeId={selectedEarthquakeId}
               onSelect={(eq) => selectEarthquake(eq)}
             />
@@ -323,10 +352,10 @@ export default function Home() {
                 </p>
                 <div className="space-y-3">
                   <p className="text-sm text-gray-500">
-                    🇹🇭 ข้อมูลจากกรมอุตุนิยมวิทยาไทย
+                    🌍 ข้อมูลจาก USGS (ทั่วโลก)
                   </p>
                   <p className="text-sm text-gray-500">
-                    🌏 ข้อมูลจาก USGS (ประเทศไทยและเอเชีย)
+                    🌏 ข้อมูลจาก USGS (เอเชีย)
                   </p>
                 </div>
               </div>
