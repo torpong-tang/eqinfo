@@ -2,11 +2,13 @@
 
 import type { DivIcon } from 'leaflet';
 import type { FeatureLayer } from 'esri-leaflet';
-import { useEffect, useMemo, useState } from 'react';
+import type { GeoJsonObject } from 'geojson';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Earthquake, DataSource } from '@/types/earthquake';
 import { useMap } from 'react-leaflet';
 import { formatDateTh } from '@/lib/formatters';
+import { isRecord, isFeature } from '@/lib/typeGuards';
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -28,7 +30,6 @@ const Marker = dynamic(
   { ssr: false }
 );
 
-
 const Rectangle = dynamic(
   () => import('react-leaflet').then((mod) => mod.Rectangle),
   { ssr: false }
@@ -44,11 +45,21 @@ const Pane = dynamic(
   { ssr: false }
 );
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+// Component to update map view without re-mounting
+function MapViewUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  const isFirstRender = useRef(true);
 
-const isFeature = (value: unknown): value is { type: 'Feature' } =>
-  isRecord(value) && value.type === 'Feature';
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    map.flyTo(center, zoom, { duration: 1.5 });
+  }, [map, center, zoom]);
+
+  return null;
+}
 
 function PlateBoundariesLayer() {
   const map = useMap();
@@ -60,7 +71,6 @@ function PlateBoundariesLayer() {
     const addLayer = async () => {
       try {
         const esri = await import('esri-leaflet');
-
         if (isCancelled) return;
 
         layer = esri.featureLayer({
@@ -81,14 +91,18 @@ function PlateBoundariesLayer() {
 
     return () => {
       isCancelled = true;
-      if (layer) {
-        map.removeLayer(layer);
-      }
+      if (layer) map.removeLayer(layer);
     };
   }, [map]);
 
   return null;
 }
+
+// Asia bounding box for USGS query
+const ASIA_BOUNDS: [[number, number], [number, number]] = [
+  [1, 26],
+  [77, 170],
+];
 
 interface MapProps {
   earthquakes: Earthquake[];
@@ -105,20 +119,17 @@ export default function EarthquakeMap({
   zoom,
   selectedSource,
   selectedEarthquakeId = null,
-  onSelect
+  onSelect,
 }: MapProps) {
   const [mounted, setMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
-  const [asiaGeoJson, setAsiaGeoJson] = useState<{ type: 'FeatureCollection'; features: unknown[] } | null>(null);
+  const [asiaGeoJson, setAsiaGeoJson] = useState<GeoJsonObject | null>(null);
   const [isAsiaLayerLoading, setIsAsiaLayerLoading] = useState(false);
 
-  const worldBounds: [[number, number], [number, number]] = [
-    [-85, -180],
-    [85, 180]
-  ];
+  const shouldShowAsiaBoundary = selectedSource === 'usgs-asia';
 
   useEffect(() => {
-    if (selectedSource !== 'asia') return;
+    if (!shouldShowAsiaBoundary) return;
     if (asiaGeoJson || isAsiaLayerLoading) return;
 
     let isCancelled = false;
@@ -134,7 +145,7 @@ export default function EarthquakeMap({
           return;
         }
         const validFeatures = payload.features.filter(isFeature);
-        setAsiaGeoJson({ type: 'FeatureCollection', features: validFeatures });
+        setAsiaGeoJson({ type: 'FeatureCollection', features: validFeatures } as GeoJsonObject);
       } catch (error) {
         if ((error as { name?: string }).name === 'AbortError') return;
         console.error('Failed to load Asia boundary:', error);
@@ -149,7 +160,7 @@ export default function EarthquakeMap({
       isCancelled = true;
       controller.abort();
     };
-  }, [selectedSource, asiaGeoJson, isAsiaLayerLoading]);
+  }, [shouldShowAsiaBoundary, asiaGeoJson, isAsiaLayerLoading]);
 
   useEffect(() => {
     setMounted(true);
@@ -179,7 +190,7 @@ export default function EarthquakeMap({
   const getMarkerIcon = (magnitude: number, isSelected: boolean) => {
     if (!leaflet) return undefined;
     const size = Math.round(10 + magnitude * 4 + (isSelected ? 4 : 0));
-    const key = `${magnitude}-${size}-${isSelected ? 'selected' : 'default'}`;
+    const key = `${magnitude}-${size}-${isSelected ? 's' : 'd'}`;
     const cached = markerIconCache.get(key);
     if (cached) return cached;
 
@@ -207,35 +218,57 @@ export default function EarthquakeMap({
   return (
     <div className="w-full h-[70vh] min-h-[500px]">
       <MapContainer
-        key={`${center[0]}-${center[1]}-${zoom}`}
         center={center}
         zoom={zoom}
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
+        <MapViewUpdater center={center} zoom={zoom} />
+
         <TileLayer
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://www.esri.com/">Esri</a>'
         />
 
-        {selectedSource === 'world' && (
+        {/* Asia boundary overlay — visible & prominent when Asia source is selected */}
+        {shouldShowAsiaBoundary && asiaGeoJson && (
+          <Pane name="asia-boundary" style={{ zIndex: 350 }}>
+            <GeoJSONLayer
+              data={asiaGeoJson}
+              style={{
+                color: '#7c3aed',
+                weight: 2.5,
+                fillColor: '#8b5cf6',
+                fillOpacity: 0.12,
+                fillRule: 'evenodd',
+                dashArray: undefined,
+              }}
+              pane="asia-boundary"
+              interactive={false}
+            />
+          </Pane>
+        )}
+
+        {/* Dashed bounding box for the USGS Asia query region */}
+        {shouldShowAsiaBoundary && (
           <Rectangle
-            bounds={worldBounds}
-            pathOptions={{ color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.05 }}
+            bounds={ASIA_BOUNDS}
+            pathOptions={{
+              color: '#7c3aed',
+              weight: 2,
+              fillColor: 'transparent',
+              fillOpacity: 0,
+              dashArray: '8 6',
+            }}
           />
         )}
 
-        {selectedSource === 'asia' && (
-          asiaGeoJson && (
-            <Pane name="asia-boundary" style={{ zIndex: 350 }}>
-              <GeoJSONLayer
-                data={asiaGeoJson}
-                style={{ color: '#8E51FF', weight: 1.5, fillColor: '#8E51FF', fillOpacity: 0.18, fillRule: 'evenodd' }}
-                pane="asia-boundary"
-                interactive={false}
-              />
-            </Pane>
-          )
+        {/* World bounding box */}
+        {selectedSource === 'usgs-world' && (
+          <Rectangle
+            bounds={[[-85, -180], [85, 180]]}
+            pathOptions={{ color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.05 }}
+          />
         )}
 
         <PlateBoundariesLayer />
@@ -246,38 +279,25 @@ export default function EarthquakeMap({
             position={[earthquake.lat, earthquake.lng]}
             icon={getMarkerIcon(earthquake.magnitude, earthquake.id === selectedEarthquakeId)}
             eventHandlers={{
-              click: () => {
-                onSelect?.(earthquake);
-              }
+              click: () => onSelect?.(earthquake),
             }}
           >
             <Popup>
               <div className="text-sm p-2 text-slate-900">
-                <h3 className="font-bold text-lg mb-2">
-                  📍 {earthquake.place}
-                </h3>
+                <h3 className="font-bold text-lg mb-2">📍 {earthquake.place}</h3>
                 <div className="space-y-1">
                   <p>
                     <span className="font-semibold">ขนาด:</span>{' '}
-                    <span className={`font-bold ${
-                      earthquake.magnitude >= 5.0 ? 'text-red-600' :
-                      earthquake.magnitude >= 3.0 ? 'text-yellow-600' :
-                      'text-green-600'
-                    }`}>
-                      {earthquake.magnitude}
+                    <span className={`font-bold ${earthquake.magnitude >= 5.0 ? 'text-red-600' :
+                        earthquake.magnitude >= 3.0 ? 'text-yellow-600' :
+                          'text-green-600'
+                      }`}>
+                      {earthquake.magnitude.toFixed(1)}
                     </span>
                   </p>
-                  <p>
-                    <span className="font-semibold">ความลึก:</span> {earthquake.depth} กม.
-                  </p>
-                  <p>
-                    <span className="font-semibold">วันที่:</span>{' '}
-                    {formatDateTh(earthquake.time)}
-                  </p>
-                  <p>
-                    <span className="font-semibold">พิกัด:</span>{' '}
-                    {earthquake.lat.toFixed(4)}, {earthquake.lng.toFixed(4)}
-                  </p>
+                  <p><span className="font-semibold">ความลึก:</span> {earthquake.depth.toFixed(1)} กม.</p>
+                  <p><span className="font-semibold">วันที่:</span> {formatDateTh(earthquake.time)}</p>
+                  <p><span className="font-semibold">พิกัด:</span> {earthquake.lat.toFixed(4)}, {earthquake.lng.toFixed(4)}</p>
                   {earthquake.url !== '#' && (
                     <a
                       href={earthquake.url}
