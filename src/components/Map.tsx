@@ -35,15 +35,44 @@ const Rectangle = dynamic(
   { ssr: false }
 );
 
-const GeoJSONLayer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.GeoJSON),
-  { ssr: false }
-);
+function AsiaGeoJSONLayer({ data }: { data: GeoJsonObject }) {
+  const map = useMap();
 
-const Pane = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Pane),
-  { ssr: false }
-);
+  useEffect(() => {
+    let layer: import('leaflet').GeoJSON | null = null;
+    let isCancelled = false;
+
+    console.log('[AsiaGeoJSONLayer] useEffect fired, data:', JSON.stringify(data).substring(0, 200));
+    console.log('[AsiaGeoJSONLayer] map exists:', !!map);
+
+    const addLayer = async () => {
+      const L = await import('leaflet');
+      if (isCancelled) {
+        console.log('[AsiaGeoJSONLayer] cancelled before addTo');
+        return;
+      }
+      layer = L.geoJSON(data as Parameters<typeof L.geoJSON>[0], {
+        style: () => ({
+          color: '#2563eb',
+          weight: 2.5,
+          fillColor: '#3b82f6',
+          fillOpacity: 0.2,
+        }),
+        interactive: false,
+      }).addTo(map);
+      console.log('[AsiaGeoJSONLayer] layer added, getLayers count:', layer.getLayers().length);
+    };
+
+    addLayer();
+
+    return () => {
+      isCancelled = true;
+      if (layer) map.removeLayer(layer);
+    };
+  }, [map, data]);
+
+  return null;
+}
 
 // Component to update map view without re-mounting
 function MapViewUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -124,20 +153,20 @@ export default function EarthquakeMap({
   const [mounted, setMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
   const [asiaGeoJson, setAsiaGeoJson] = useState<GeoJsonObject | null>(null);
-  const [isAsiaLayerLoading, setIsAsiaLayerLoading] = useState(false);
+  const isAsiaLayerLoading = useRef(false);
 
   const shouldShowAsiaBoundary = selectedSource === 'usgs-asia';
 
   useEffect(() => {
     if (!shouldShowAsiaBoundary) return;
-    if (asiaGeoJson || isAsiaLayerLoading) return;
+    if (asiaGeoJson || isAsiaLayerLoading.current) return;
 
     let isCancelled = false;
     const controller = new AbortController();
 
     const loadAsiaLayer = async () => {
       try {
-        setIsAsiaLayerLoading(true);
+        isAsiaLayerLoading.current = true;
         const response = await fetch('/api/asia-geojson', { signal: controller.signal });
         const payload = (await response.json()) as unknown;
         if (isCancelled) return;
@@ -150,7 +179,7 @@ export default function EarthquakeMap({
         if ((error as { name?: string }).name === 'AbortError') return;
         console.error('Failed to load Asia boundary:', error);
       } finally {
-        if (!isCancelled) setIsAsiaLayerLoading(false);
+        if (!isCancelled) isAsiaLayerLoading.current = false;
       }
     };
 
@@ -160,7 +189,7 @@ export default function EarthquakeMap({
       isCancelled = true;
       controller.abort();
     };
-  }, [shouldShowAsiaBoundary, asiaGeoJson, isAsiaLayerLoading]);
+  }, [shouldShowAsiaBoundary, asiaGeoJson]);
 
   useEffect(() => {
     setMounted(true);
@@ -232,21 +261,7 @@ export default function EarthquakeMap({
 
         {/* Asia boundary overlay — visible & prominent when Asia source is selected */}
         {shouldShowAsiaBoundary && asiaGeoJson && (
-          <Pane name="asia-boundary" style={{ zIndex: 350 }}>
-            <GeoJSONLayer
-              data={asiaGeoJson}
-              style={{
-                color: '#7c3aed',
-                weight: 2.5,
-                fillColor: '#8b5cf6',
-                fillOpacity: 0.12,
-                fillRule: 'evenodd',
-                dashArray: undefined,
-              }}
-              pane="asia-boundary"
-              interactive={false}
-            />
-          </Pane>
+          <AsiaGeoJSONLayer data={asiaGeoJson} />
         )}
 
         {/* Dashed bounding box for the USGS Asia query region */}
@@ -254,7 +269,7 @@ export default function EarthquakeMap({
           <Rectangle
             bounds={ASIA_BOUNDS}
             pathOptions={{
-              color: '#7c3aed',
+              color: '#2563eb',
               weight: 2,
               fillColor: 'transparent',
               fillOpacity: 0,

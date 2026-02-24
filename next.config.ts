@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     ];
     return config;
   },
+  basePath: "/eqinfo",
+  assetPrefix: "/eqinfo",
+  output: "standalone",
 };
 
 export default nextConfig;
