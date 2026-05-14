@@ -30,51 +30,32 @@ const Marker = dynamic(
   { ssr: false }
 );
 
-const Rectangle = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Rectangle),
+const GeoJSONLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.GeoJSON),
   { ssr: false }
 );
 
-function AsiaGeoJSONLayer({ data }: { data: GeoJsonObject }) {
-  const map = useMap();
+const Pane = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Pane),
+  { ssr: false }
+);
 
-  useEffect(() => {
-    let layer: import('leaflet').GeoJSON | null = null;
-    let isCancelled = false;
+const CONTINENT_COLORS: Record<string, string> = {
+  Africa: '#f97316',
+  Antarctica: '#94a3b8',
+  Asia: '#38bdf8',
+  Europe: '#8b5cf6',
+  'North America': '#22c55e',
+  Oceania: '#14b8a6',
+  'South America': '#eab308',
+};
 
-    console.log('[AsiaGeoJSONLayer] useEffect fired, data:', JSON.stringify(data).substring(0, 200));
-    console.log('[AsiaGeoJSONLayer] map exists:', !!map);
+const getContinentFillColor = (feature: unknown) => {
+  if (!isRecord(feature) || !isRecord(feature.properties)) return '#64748b';
+  const continent = feature.properties.continent;
+  return typeof continent === 'string' ? (CONTINENT_COLORS[continent] ?? '#64748b') : '#64748b';
+};
 
-    const addLayer = async () => {
-      const L = await import('leaflet');
-      if (isCancelled) {
-        console.log('[AsiaGeoJSONLayer] cancelled before addTo');
-        return;
-      }
-      layer = L.geoJSON(data as Parameters<typeof L.geoJSON>[0], {
-        style: () => ({
-          color: '#2563eb',
-          weight: 2.5,
-          fillColor: '#3b82f6',
-          fillOpacity: 0.2,
-        }),
-        interactive: false,
-      }).addTo(map);
-      console.log('[AsiaGeoJSONLayer] layer added, getLayers count:', layer.getLayers().length);
-    };
-
-    addLayer();
-
-    return () => {
-      isCancelled = true;
-      if (layer) map.removeLayer(layer);
-    };
-  }, [map, data]);
-
-  return null;
-}
-
-// Component to update map view without re-mounting
 function MapViewUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   const isFirstRender = useRef(true);
@@ -86,6 +67,30 @@ function MapViewUpdater({ center, zoom }: { center: [number, number]; zoom: numb
     }
     map.flyTo(center, zoom, { duration: 1.5 });
   }, [map, center, zoom]);
+
+  return null;
+}
+
+function SelectedEarthquakeUpdater({
+  earthquakes,
+  selectedEarthquakeId,
+}: {
+  earthquakes: Earthquake[];
+  selectedEarthquakeId: string | null;
+}) {
+  const map = useMap();
+  const lastSelectedIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedEarthquakeId || selectedEarthquakeId === lastSelectedIdRef.current) return;
+
+    const selected = earthquakes.find((eq) => eq.id === selectedEarthquakeId);
+    if (!selected) return;
+
+    lastSelectedIdRef.current = selectedEarthquakeId;
+    map.closePopup();
+    map.flyTo([selected.lat, selected.lng], Math.max(map.getZoom(), 6), { duration: 1.1 });
+  }, [earthquakes, map, selectedEarthquakeId]);
 
   return null;
 }
@@ -127,12 +132,6 @@ function PlateBoundariesLayer() {
   return null;
 }
 
-// Asia bounding box for USGS query
-const ASIA_BOUNDS: [[number, number], [number, number]] = [
-  [1, 26],
-  [77, 170],
-];
-
 interface MapProps {
   earthquakes: Earthquake[];
   center: [number, number];
@@ -146,50 +145,13 @@ export default function EarthquakeMap({
   earthquakes,
   center,
   zoom,
-  selectedSource,
   selectedEarthquakeId = null,
   onSelect,
 }: MapProps) {
   const [mounted, setMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
-  const [asiaGeoJson, setAsiaGeoJson] = useState<GeoJsonObject | null>(null);
-  const isAsiaLayerLoading = useRef(false);
-
-  const shouldShowAsiaBoundary = selectedSource === 'usgs-asia';
-
-  useEffect(() => {
-    if (!shouldShowAsiaBoundary) return;
-    if (asiaGeoJson || isAsiaLayerLoading.current) return;
-
-    let isCancelled = false;
-    const controller = new AbortController();
-
-    const loadAsiaLayer = async () => {
-      try {
-        isAsiaLayerLoading.current = true;
-        const response = await fetch('/api/asia-geojson', { signal: controller.signal });
-        const payload = (await response.json()) as unknown;
-        if (isCancelled) return;
-        if (!isRecord(payload) || payload.type !== 'FeatureCollection' || !Array.isArray(payload.features)) {
-          return;
-        }
-        const validFeatures = payload.features.filter(isFeature);
-        setAsiaGeoJson({ type: 'FeatureCollection', features: validFeatures } as GeoJsonObject);
-      } catch (error) {
-        if ((error as { name?: string }).name === 'AbortError') return;
-        console.error('Failed to load Asia boundary:', error);
-      } finally {
-        if (!isCancelled) isAsiaLayerLoading.current = false;
-      }
-    };
-
-    loadAsiaLayer();
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [shouldShowAsiaBoundary, asiaGeoJson]);
+  const [continentsGeoJson, setContinentsGeoJson] = useState<GeoJsonObject | null>(null);
+  const [thailandGeoJson, setThailandGeoJson] = useState<GeoJsonObject | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -207,6 +169,66 @@ export default function EarthquakeMap({
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (continentsGeoJson) return;
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const loadContinentsLayer = async () => {
+      try {
+        const response = await fetch('/api/continents-geojson', { signal: controller.signal });
+        const payload = (await response.json()) as unknown;
+        if (isCancelled) return;
+        if (!isRecord(payload) || payload.type !== 'FeatureCollection' || !Array.isArray(payload.features)) {
+          return;
+        }
+        const validFeatures = payload.features.filter(isFeature);
+        setContinentsGeoJson({ type: 'FeatureCollection', features: validFeatures } as GeoJsonObject);
+      } catch (error) {
+        if ((error as { name?: string }).name === 'AbortError') return;
+        console.error('Failed to load continent country colors:', error);
+      }
+    };
+
+    loadContinentsLayer();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [continentsGeoJson]);
+
+  useEffect(() => {
+    if (thailandGeoJson) return;
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const loadThailandLayer = async () => {
+      try {
+        const response = await fetch('/api/thailand-geojson', { signal: controller.signal });
+        const payload = (await response.json()) as unknown;
+        if (isCancelled) return;
+        if (!isRecord(payload) || payload.type !== 'FeatureCollection' || !Array.isArray(payload.features)) {
+          return;
+        }
+        const validFeatures = payload.features.filter(isFeature);
+        setThailandGeoJson({ type: 'FeatureCollection', features: validFeatures } as GeoJsonObject);
+      } catch (error) {
+        if ((error as { name?: string }).name === 'AbortError') return;
+        console.error('Failed to load Thailand boundary:', error);
+      }
+    };
+
+    loadThailandLayer();
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [thailandGeoJson]);
 
   const getMarkerColor = (magnitude: number) => {
     if (magnitude >= 5.0) return '#ef4444';
@@ -249,41 +271,50 @@ export default function EarthquakeMap({
       <MapContainer
         center={center}
         zoom={zoom}
+        scrollWheelZoom={false}
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
         <MapViewUpdater center={center} zoom={zoom} />
+        <SelectedEarthquakeUpdater
+          earthquakes={earthquakes}
+          selectedEarthquakeId={selectedEarthquakeId}
+        />
 
         <TileLayer
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://www.esri.com/">Esri</a>'
         />
 
-        {/* Asia boundary overlay — visible & prominent when Asia source is selected */}
-        {shouldShowAsiaBoundary && asiaGeoJson && (
-          <AsiaGeoJSONLayer data={asiaGeoJson} />
+        {continentsGeoJson && (
+          <Pane name="continent-colors" style={{ zIndex: 320 }}>
+            <GeoJSONLayer
+              data={continentsGeoJson}
+              style={(feature: unknown) => ({
+                stroke: false,
+                fillColor: getContinentFillColor(feature),
+                fillOpacity: 0.18,
+              })}
+              pane="continent-colors"
+              interactive={false}
+            />
+          </Pane>
         )}
 
-        {/* Dashed bounding box for the USGS Asia query region */}
-        {shouldShowAsiaBoundary && (
-          <Rectangle
-            bounds={ASIA_BOUNDS}
-            pathOptions={{
-              color: '#2563eb',
-              weight: 2,
-              fillColor: 'transparent',
-              fillOpacity: 0,
-              dashArray: '8 6',
-            }}
-          />
-        )}
-
-        {/* World bounding box */}
-        {selectedSource === 'usgs-world' && (
-          <Rectangle
-            bounds={[[-85, -180], [85, 180]]}
-            pathOptions={{ color: '#2563eb', weight: 2, fillColor: '#2563eb', fillOpacity: 0.05 }}
-          />
+        {thailandGeoJson && (
+          <Pane name="thailand-boundary" style={{ zIndex: 340 }}>
+            <GeoJSONLayer
+              data={thailandGeoJson}
+              style={{
+                color: '#2563eb',
+                weight: 2.5,
+                opacity: 1,
+                fillOpacity: 0,
+              }}
+              pane="thailand-boundary"
+              interactive={false}
+            />
+          </Pane>
         )}
 
         <PlateBoundariesLayer />

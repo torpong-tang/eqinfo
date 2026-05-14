@@ -9,7 +9,7 @@ export interface Earthquake {
   url: string;
 }
 
-export type DataSource = 'usgs-world' | 'usgs-asia' | 'tmd' | 'emsc' | null;
+export type DataSource = 'usgs-world' | 'usgs-asia' | 'geofon-asia' | 'bmkg' | 'tmd' | 'emsc' | null;
 
 export interface DataSourceConfig {
   key: DataSource;
@@ -32,6 +32,20 @@ export const DATA_SOURCES: DataSourceConfig[] = [
     emoji: '🌏',
     label: 'USGS เอเชีย',
     description: 'ข้อมูลจาก USGS เฉพาะเอเชีย',
+    timeRange: '240 ชม.',
+  },
+  {
+    key: 'geofon-asia',
+    emoji: '🌐',
+    label: 'GEOFON เอเชีย',
+    description: 'ข้อมูลจาก GFZ GEOFON เฉพาะเอเชีย',
+    timeRange: '240 ชม.',
+  },
+  {
+    key: 'bmkg',
+    emoji: '🇮🇩',
+    label: 'BMKG อินโดนีเซีย',
+    description: 'ข้อมูลจาก BMKG ประเทศอินโดนีเซีย',
     timeRange: '240 ชม.',
   },
   {

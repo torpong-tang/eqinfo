@@ -2,10 +2,13 @@
 
 import { DataSource, DATA_SOURCES } from '@/types/earthquake';
 
+type ConcreteDataSource = Exclude<DataSource, null>;
+
 interface HeaderProps {
   selectedSource: DataSource;
   onSourceChange: (source: DataSource) => void;
   onClearMap: () => void;
+  onAboutClick: () => void;
   onRefresh: () => void;
   isLoading: boolean;
   earthquakeCount: number;
@@ -23,6 +26,7 @@ export default function Header({
   selectedSource,
   onSourceChange,
   onClearMap,
+  onAboutClick,
   onRefresh,
   isLoading,
   earthquakeCount,
@@ -32,6 +36,14 @@ export default function Header({
 }: HeaderProps) {
   const isActive = (filter: 'all' | 'high' | 'mid' | 'low') => magnitudeFilter === filter;
   const currentSourceConfig = DATA_SOURCES.find((s) => s.key === selectedSource);
+  const activeSourceButtonStyles: Record<ConcreteDataSource, string> = {
+    'usgs-world': 'bg-sky-700 text-white ring-sky-200/50 shadow-sm',
+    'usgs-asia': 'bg-cyan-700 text-white ring-cyan-200/50 shadow-sm',
+    'geofon-asia': 'bg-violet-700 text-white ring-violet-200/50 shadow-sm',
+    bmkg: 'bg-orange-600 text-white ring-orange-200/50 shadow-sm',
+    tmd: 'bg-emerald-700 text-white ring-emerald-200/50 shadow-sm',
+    emsc: 'bg-rose-700 text-white ring-rose-200/50 shadow-sm',
+  };
   const sourceNote = currentSourceConfig
     ? `แหล่งข้อมูล: ${currentSourceConfig.label} (${currentSourceConfig.timeRange})`
     : 'แหล่งข้อมูล: ยังไม่เลือก';
@@ -42,31 +54,46 @@ export default function Header({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">🌍 ข้อมูลแผ่นดินไหว</h1>
-            <p className="text-blue-100">
-              {isLoading ? 'กำลังโหลดข้อมูล...' : `พบ ${earthquakeCount} รายการ`}
-              {` • ${sourceNote}`}
-            </p>
+            {selectedSource && (
+              <p className="text-blue-100">
+                {isLoading ? 'กำลังโหลดข้อมูล...' : `พบ ${earthquakeCount} รายการ`}
+                {` • ${sourceNote}`}
+              </p>
+            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
-            <div className="flex flex-wrap bg-white/10 rounded-lg p-1 gap-1">
-              {DATA_SOURCES.map((source) => (
-                <button
-                  key={source.key}
-                  onClick={() => onSourceChange(source.key)}
-                  disabled={isLoading}
-                  title={source.description}
-                  className={`px-3 py-2 rounded-md transition-all duration-200 text-sm whitespace-nowrap ${selectedSource === source.key
-                      ? 'bg-white text-blue-800 font-semibold shadow-sm'
-                      : 'text-white hover:bg-white/20'
-                    } ${isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >
-                  {source.emoji} {source.label}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
+            <div className="relative w-full sm:w-80">
+              <select
+                value={selectedSource ?? ''}
+                onChange={(event) => onSourceChange(event.target.value as DataSource)}
+                disabled={isLoading}
+                title="เลือกแหล่งข้อมูล"
+                className={`h-11 w-full appearance-none rounded-xl border border-white/35 px-4 pr-10 text-sm font-semibold shadow-lg shadow-blue-950/10 outline-none ring-1 backdrop-blur transition focus:border-orange-200 focus:ring-2 focus:ring-orange-200/70 disabled:cursor-not-allowed disabled:opacity-60 ${selectedSource
+                    ? activeSourceButtonStyles[selectedSource]
+                    : 'bg-white/15 text-white ring-white/25'
+                  }`}
+              >
+                <option value="" className="bg-white text-slate-900">เลือกแหล่งข้อมูล</option>
+                {DATA_SOURCES.map((source) => {
+                  const sourceKey = source.key as ConcreteDataSource;
+
+                  return (
+                    <option key={sourceKey} value={sourceKey} className="bg-white text-slate-900">
+                      {source.emoji} {source.label} ({source.timeRange})
+                    </option>
+                  );
+                })}
+              </select>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 ${selectedSource ? 'text-current' : 'text-white'}`}
+              >
+                <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
 
-            <div className="flex gap-2">
               {selectedSource && (
                 <button
                   onClick={onRefresh}
@@ -81,53 +108,60 @@ export default function Header({
                 onClick={onClearMap}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
               >
-                ล้างแผนที่
+                🧹 ล้างแผนที่
               </button>
-            </div>
+              <button
+                onClick={onAboutClick}
+                className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded-lg ring-1 ring-white/30 transition-colors duration-200 font-medium text-sm"
+              >
+                About
+              </button>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3 text-sm">
-          <button
-            onClick={() => onMagnitudeFilterChange('all')}
-            className={`px-3 py-1 rounded-full border transition-colors ${isActive('all')
-                ? 'bg-white text-blue-800 border-white'
-                : 'border-white/40 text-white/90 hover:bg-white/10'
-              }`}
-          >
-            ทั้งหมด <span className="ml-1 text-xs opacity-80">({magnitudeCounts.all})</span>
-          </button>
-          <button
-            onClick={() => onMagnitudeFilterChange('high')}
-            className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${isActive('high')
-                ? 'bg-white text-blue-800 border-white'
-                : 'border-white/40 text-white/90 hover:bg-white/10'
-              }`}
-          >
-            <span className="w-3 h-3 bg-red-500 rounded-full" />
-            มากกว่า 5.0 <span className="text-xs opacity-80">({magnitudeCounts.high})</span>
-          </button>
-          <button
-            onClick={() => onMagnitudeFilterChange('mid')}
-            className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${isActive('mid')
-                ? 'bg-white text-blue-800 border-white'
-                : 'border-white/40 text-white/90 hover:bg-white/10'
-              }`}
-          >
-            <span className="w-3 h-3 bg-yellow-400 rounded-full" />
-            3.0 - 5.0 <span className="text-xs opacity-80">({magnitudeCounts.mid})</span>
-          </button>
-          <button
-            onClick={() => onMagnitudeFilterChange('low')}
-            className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${isActive('low')
-                ? 'bg-white text-blue-800 border-white'
-                : 'border-white/40 text-white/90 hover:bg-white/10'
-              }`}
-          >
-            <span className="w-3 h-3 bg-green-500 rounded-full" />
-            น้อยกว่า 3.0 <span className="text-xs opacity-80">({magnitudeCounts.low})</span>
-          </button>
-        </div>
+        {selectedSource && (
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <button
+              onClick={() => onMagnitudeFilterChange('all')}
+              className={`px-3 py-1 rounded-full border transition-colors ${isActive('all')
+                  ? 'bg-white text-blue-800 border-white'
+                  : 'border-white/40 text-white/90 hover:bg-white/10'
+                }`}
+            >
+              ทั้งหมด <span className="ml-1 text-xs opacity-80">({magnitudeCounts.all})</span>
+            </button>
+            <button
+              onClick={() => onMagnitudeFilterChange('high')}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${isActive('high')
+                  ? 'bg-white text-blue-800 border-white'
+                  : 'border-white/40 text-white/90 hover:bg-white/10'
+                }`}
+            >
+              <span className="w-3 h-3 bg-red-500 rounded-full" />
+              5.0 ขึ้นไป <span className="text-xs opacity-80">({magnitudeCounts.high})</span>
+            </button>
+            <button
+              onClick={() => onMagnitudeFilterChange('mid')}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${isActive('mid')
+                  ? 'bg-white text-blue-800 border-white'
+                  : 'border-white/40 text-white/90 hover:bg-white/10'
+                }`}
+            >
+              <span className="w-3 h-3 bg-yellow-400 rounded-full" />
+              3.0 - 4.9 <span className="text-xs opacity-80">({magnitudeCounts.mid})</span>
+            </button>
+            <button
+              onClick={() => onMagnitudeFilterChange('low')}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${isActive('low')
+                  ? 'bg-white text-blue-800 border-white'
+                  : 'border-white/40 text-white/90 hover:bg-white/10'
+                }`}
+            >
+              <span className="w-3 h-3 bg-green-500 rounded-full" />
+              น้อยกว่า 3.0 <span className="text-xs opacity-80">({magnitudeCounts.low})</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

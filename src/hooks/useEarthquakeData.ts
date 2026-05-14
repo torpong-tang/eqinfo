@@ -11,6 +11,8 @@ interface UseEarthquakeDataReturn {
     selectedSource: DataSource;
     isLoading: boolean;
     error: FetchError | null;
+    fetchedAt: number | null;
+    sourceUpdatedAt: number | null;
     mapView: MapViewState;
     changeSource: (source: DataSource) => void;
     clearAll: () => void;
@@ -23,6 +25,8 @@ export function useEarthquakeData(): UseEarthquakeDataReturn {
     const [selectedSource, setSelectedSource] = useState<DataSource>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<FetchError | null>(null);
+    const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+    const [sourceUpdatedAt, setSourceUpdatedAt] = useState<number | null>(null);
     const [mapView, setMapView] = useState<MapViewState>({ center: [15, 0], zoom: 2 });
     const abortRef = useRef<AbortController | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -39,7 +43,9 @@ export function useEarthquakeData(): UseEarthquakeDataReturn {
             setError(null);
             const data = await fetchEarthquakes(source, controller.signal);
             if (!controller.signal.aborted) {
-                setEarthquakes(data);
+                setEarthquakes(data.earthquakes);
+                setFetchedAt(Date.now());
+                setSourceUpdatedAt(data.sourceUpdatedAt);
                 setMapView(getDefaultMapView(source));
             }
         } catch (err) {
@@ -68,6 +74,8 @@ export function useEarthquakeData(): UseEarthquakeDataReturn {
         if (timerRef.current) clearInterval(timerRef.current);
         setSelectedSource(null);
         setEarthquakes([]);
+        setFetchedAt(null);
+        setSourceUpdatedAt(null);
         setError(null);
         setMapView({ center: [15, 0], zoom: 2 });
     }, []);
@@ -107,6 +115,8 @@ export function useEarthquakeData(): UseEarthquakeDataReturn {
         selectedSource,
         isLoading,
         error,
+        fetchedAt,
+        sourceUpdatedAt,
         mapView,
         changeSource,
         clearAll,

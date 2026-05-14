@@ -36,6 +36,7 @@ export async function GET() {
     const jsonData = parser.parse(xmlText) as RssResponse;
     
     const earthquakes: Earthquake[] = [];
+    let sourceUpdatedAt: number | null = null;
     
     if (jsonData.rss && jsonData.rss.channel && jsonData.rss.channel.item) {
       const items = Array.isArray(jsonData.rss.channel.item)
@@ -44,6 +45,12 @@ export async function GET() {
 
       items.filter(isRssItem).forEach((item, index) => {
         try {
+          if (item.pubDate) {
+            const timestamp = new Date(item.pubDate).getTime();
+            if (Number.isFinite(timestamp)) {
+              sourceUpdatedAt = sourceUpdatedAt === null ? timestamp : Math.max(sourceUpdatedAt, timestamp);
+            }
+          }
           const description = item.description || '';
           const magnitudeMatch = description.match(/Magnitude\s*:\s*([\d.]+)/);
           const depthMatch = description.match(/Depth\s*:\s*([\d.]+)\s*km/);
@@ -68,7 +75,11 @@ export async function GET() {
       });
     }
     
-    return NextResponse.json(earthquakes);
+    return NextResponse.json(earthquakes, {
+      headers: {
+        ...(sourceUpdatedAt ? { 'X-Source-Updated-At': new Date(sourceUpdatedAt).toISOString() } : {}),
+      },
+    });
   } catch (error) {
     console.error('Error fetching Thai earthquake data:', error);
     return NextResponse.json({ error: 'Failed to fetch earthquake data' }, { status: 500 });

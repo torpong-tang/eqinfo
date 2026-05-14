@@ -18,21 +18,23 @@ export default function PaginationControls({
     onPageSizeChange,
 }: PaginationControlsProps) {
     const btnClass = (disabled: boolean) =>
-        `px-3 py-1 rounded-md border inline-flex items-center gap-2 ${disabled
-            ? 'text-gray-400 border-gray-200 cursor-not-allowed'
-            : 'text-gray-700 border-gray-300 hover:bg-gray-100'
+        `inline-flex items-center gap-2 rounded-md border px-3 py-1.5 font-medium transition ${disabled
+            ? 'cursor-not-allowed border-white/25 bg-white/20 text-blue-900/35'
+            : 'border-white/45 bg-white/55 text-blue-950 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700'
         }`;
 
     return (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm flex-wrap gap-3">
-            <div className="flex flex-wrap items-center gap-3 text-gray-700">
-                <span>หน้า {currentPage} จาก {totalPages}</span>
-                <label className="flex items-center gap-2 text-gray-600">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/55 bg-[linear-gradient(135deg,rgba(255,255,255,0.70),rgba(219,234,254,0.66),rgba(255,237,213,0.58))] px-4 py-3 text-sm backdrop-blur-xl">
+            <div className="flex flex-wrap items-center gap-3 text-blue-950">
+                <span className="rounded-full bg-white/55 px-3 py-1 font-semibold ring-1 ring-white/60">
+                    หน้า {currentPage} จาก {totalPages}
+                </span>
+                <label className="flex items-center gap-2 text-blue-950/75">
                     <span>แสดงต่อหน้า</span>
                     <select
                         value={pageSize}
                         onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                        className="border border-gray-300 rounded-md px-2 py-1 text-gray-700 bg-white"
+                        className="rounded-md border border-white/60 bg-white/80 px-2 py-1 text-blue-950 shadow-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
                     >
                         <option value={10}>10</option>
                         <option value={30}>30</option>
@@ -69,15 +71,15 @@ export default function PaginationControls({
                         <button
                             key={`${p}-${idx}`}
                             onClick={() => onPageChange(p)}
-                            className={`px-3 py-1 rounded-md border ${p === currentPage
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'text-gray-700 border-gray-300 hover:bg-gray-100'
+                            className={`rounded-md border px-3 py-1.5 font-semibold transition ${p === currentPage
+                                    ? 'border-orange-500 bg-orange-500 text-white shadow-sm shadow-orange-950/20'
+                                    : 'border-white/45 bg-white/55 text-blue-950 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700'
                                 }`}
                         >
                             {p}
                         </button>
                     ) : (
-                        <span key={`${p}-${idx}`} className="px-2 text-gray-400">{p}</span>
+                        <span key={`${p}-${idx}`} className="px-2 text-blue-900/40">{p}</span>
                     )
                 )}
 

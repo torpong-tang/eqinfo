@@ -9,6 +9,8 @@ interface EarthquakeTableProps {
     totalCount: number;
     magnitudeFilteredCount: number;
     lastUpdated: string | null;
+    fetchedAt: string | null;
+    sourceUpdatedAt: string | null;
     searchTerm: string;
     onSearchChange: (term: string) => void;
     sortBy: 'time' | 'magnitude' | 'depth' | 'place';
@@ -37,17 +39,47 @@ const highlightText = (text: string, term: string): ReactNode => {
 };
 
 const COLUMNS = [
-    ['place', 'สถานที่'],
-    ['magnitude', 'ขนาด'],
-    ['depth', 'ความลึก (กม.)'],
-    ['time', 'วันที่/เวลา'],
+    ['place', 'สถานที่', 'w-[520px] min-w-[520px]'],
+    ['magnitude', 'ขนาด', 'w-[150px] min-w-[150px]'],
+    ['depth', 'ความลึก (กม.)', 'w-[170px] min-w-[170px]'],
+    ['time', 'วันที่/เวลา', 'w-[220px] min-w-[220px]'],
 ] as const;
+
+const getMagnitudeStyle = (magnitude: number) => {
+    if (magnitude >= 5) {
+        return {
+            badge: 'bg-red-500/15 text-red-700 ring-red-300/70',
+            dot: 'bg-red-500',
+            row: 'border-l-red-500',
+            glow: 'shadow-red-500/10',
+            label: 'สูง',
+        };
+    }
+    if (magnitude >= 3) {
+        return {
+            badge: 'bg-orange-500/15 text-orange-700 ring-orange-300/70',
+            dot: 'bg-orange-500',
+            row: 'border-l-orange-400',
+            glow: 'shadow-orange-500/10',
+            label: 'กลาง',
+        };
+    }
+    return {
+        badge: 'bg-sky-500/15 text-sky-700 ring-sky-300/70',
+        dot: 'bg-sky-500',
+        row: 'border-l-sky-500',
+        glow: 'shadow-sky-500/10',
+        label: 'ต่ำ',
+    };
+};
 
 export default function EarthquakeTable({
     earthquakes,
     totalCount,
     magnitudeFilteredCount,
     lastUpdated,
+    fetchedAt,
+    sourceUpdatedAt,
     searchTerm,
     onSearchChange,
     sortBy,
@@ -58,44 +90,69 @@ export default function EarthquakeTable({
     isLoading,
 }: EarthquakeTableProps) {
     return (
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800">รายการข้อมูลแผ่นดินไหว</h3>
-                <div className="mt-3 flex flex-wrap gap-3 items-center">
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        placeholder="ค้นหา (สถานที่หรือ URL)"
-                        className="w-full md:w-80 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                    />
-                    {searchTerm && (
-                        <button
-                            onClick={() => onSearchChange('')}
-                            className="px-3 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700"
-                        >
-                            ล้างค้นหา
-                        </button>
-                    )}
-                    <span className="text-sm text-gray-600">ทั้งหมด {totalCount} รายการ</span>
-                    <span className="text-sm text-gray-600">ตามตัวกรอง {magnitudeFilteredCount} รายการ</span>
-                    {lastUpdated && (
-                        <span className="text-sm text-gray-500">อัปเดตล่าสุด {lastUpdated}</span>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                        <span className="font-medium text-gray-700">คำอธิบายสี:</span>
-                        <span className="inline-flex items-center gap-1">
-                            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                            มากกว่า 5.0
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                            3.0 - 5.0
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                            <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                            น้อยกว่า 3.0
-                        </span>
+        <div className="overflow-hidden rounded-lg border border-white/55 bg-white/55 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
+            <div className="border-b border-white/50 bg-[linear-gradient(135deg,rgba(30,64,175,0.92),rgba(14,165,233,0.66)_58%,rgba(249,115,22,0.72))] p-4 text-white">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h3 className="text-lg font-semibold text-white">รายการข้อมูลแผ่นดินไหว</h3>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                            <span className="rounded-full bg-white/18 px-3 py-1 font-medium text-white ring-1 ring-white/30 backdrop-blur">
+                                ทั้งหมด {totalCount} รายการ
+                            </span>
+                            <span className="rounded-full bg-white/18 px-3 py-1 font-medium text-white ring-1 ring-white/30 backdrop-blur">
+                                ตามตัวกรอง {magnitudeFilteredCount} รายการ
+                            </span>
+                            {lastUpdated && (
+                                <span className="rounded-full bg-orange-400/22 px-3 py-1 font-medium text-white ring-1 ring-orange-200/60 backdrop-blur">
+                                    เหตุการณ์ล่าสุด {lastUpdated}
+                                </span>
+                            )}
+                            <span className="rounded-full bg-blue-500/18 px-3 py-1 font-medium text-white ring-1 ring-blue-100/40 backdrop-blur">
+                                {sourceUpdatedAt
+                                    ? `แหล่งข้อมูลอัปเดตเมื่อ ${sourceUpdatedAt}`
+                                    : 'แหล่งข้อมูลไม่ระบุเวลาอัปเดต'}
+                            </span>
+                            {fetchedAt && (
+                                <span className="rounded-full bg-white/18 px-3 py-1 font-medium text-white ring-1 ring-white/30 backdrop-blur">
+                                    โหลดข้อมูลในแอปเมื่อ {fetchedAt}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
+                        <div className="flex w-full gap-2 sm:w-auto">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                placeholder="ค้นหา (สถานที่หรือ URL)"
+                                className="h-10 w-full rounded-md border border-white/40 bg-white/85 px-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-500 focus:border-orange-300 focus:ring-2 focus:ring-orange-200/70 sm:w-80"
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => onSearchChange('')}
+                                    className="h-10 rounded-md bg-orange-500 px-3 text-sm font-semibold text-white shadow-sm shadow-orange-950/20 transition hover:bg-orange-600"
+                                >
+                                    ล้าง
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-white/88">
+                            <span className="font-medium text-white">ระดับ:</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2.5 py-1 text-white ring-1 ring-white/30 backdrop-blur">
+                                <span className="h-2 w-2 rounded-full bg-red-500" />
+                                5.0 ขึ้นไป
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2.5 py-1 text-white ring-1 ring-white/30 backdrop-blur">
+                                <span className="h-2 w-2 rounded-full bg-orange-400" />
+                                3.0 - 4.9
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2.5 py-1 text-white ring-1 ring-white/30 backdrop-blur">
+                                <span className="h-2 w-2 rounded-full bg-sky-400" />
+                                น้อยกว่า 3.0
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,18 +161,26 @@ export default function EarthquakeTable({
                 {isLoading ? (
                     <LoadingRows />
                 ) : (
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-gray-50 text-gray-700">
+                    <table className="w-full min-w-[1060px] table-fixed text-sm">
+                        <colgroup>
+                            <col className="w-[520px]" />
+                            <col className="w-[150px]" />
+                            <col className="w-[170px]" />
+                            <col className="w-[220px]" />
+                        </colgroup>
+                        <thead className="bg-blue-950/90 text-white backdrop-blur">
                             <tr>
-                                {COLUMNS.map(([field, label]) => (
-                                    <th key={field} className="px-4 py-3 text-left">
+                                {COLUMNS.map(([field, label, widthClass]) => (
+                                    <th key={field} className={`px-4 py-3 text-left first:pl-5 ${widthClass}`}>
                                         <button
                                             onClick={() => onSort(field)}
-                                            className="flex items-center gap-1 text-gray-700 hover:text-blue-700"
+                                            className="flex items-center gap-1 font-semibold text-white/90 transition hover:text-orange-200"
                                         >
                                             <span>{label}</span>
                                             {sortBy === field && (
-                                                <span className="text-xs">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                                                <span className="rounded bg-orange-400/25 px-1.5 py-0.5 text-[10px] text-orange-100">
+                                                    {sortDir === 'asc' ? '▲' : '▼'}
+                                                </span>
                                             )}
                                         </button>
                                     </th>
@@ -125,41 +190,54 @@ export default function EarthquakeTable({
                         <tbody>
                             {earthquakes.length === 0 ? (
                                 <tr>
-                                    <td className="px-4 py-4 text-center text-gray-500" colSpan={4}>
+                                    <td className="px-4 py-8 text-center text-slate-500" colSpan={4}>
                                         ไม่มีข้อมูลในหน้านี้
                                     </td>
                                 </tr>
                             ) : (
-                                earthquakes.map((eq) => (
-                                    <tr
-                                        key={eq.id}
-                                        className={`group border-t border-gray-200 last:border-b hover:bg-gray-50 cursor-pointer focus-within:bg-blue-50 ${eq.id === selectedEarthquakeId ? 'bg-blue-50' : ''}`}
-                                        onClick={() => onSelect(eq)}
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-selected={eq.id === selectedEarthquakeId}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
-                                                onSelect(eq);
-                                            }
-                                        }}
-                                    >
-                                        <td className="px-4 py-3 text-gray-800">
-                                            <div className="flex items-center gap-2">
-                                                <span>{highlightText(eq.place, searchTerm)}</span>
-                                                <span className="text-gray-400 group-hover:text-blue-600">→</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 font-semibold">
-                                            <span className={eq.magnitude >= 5 ? 'text-red-600' : eq.magnitude >= 3 ? 'text-yellow-600' : 'text-green-600'}>
-                                                {eq.magnitude.toFixed(1)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-700">{eq.depth.toFixed(1)}</td>
-                                        <td className="px-4 py-3 text-gray-700">{formatDateTh(eq.time)}</td>
-                                    </tr>
-                                ))
+                                earthquakes.map((eq, index) => {
+                                    const style = getMagnitudeStyle(eq.magnitude);
+                                    const isSelected = eq.id === selectedEarthquakeId;
+                                    const rowTint = index % 2 === 0 ? 'bg-white/68' : 'bg-blue-100/72';
+
+                                    return (
+                                        <tr
+                                            key={eq.id}
+                                            className={`group cursor-pointer border-l-4 ${style.row} border-t border-white/55 transition hover:bg-orange-50/70 focus-within:bg-blue-100/75 ${isSelected ? 'bg-blue-100/85 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.25)]' : rowTint} ${style.glow}`}
+                                            onClick={() => onSelect(eq)}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    onSelect(eq);
+                                                }
+                                            }}
+                                        >
+                                            <td className="w-[520px] min-w-[520px] px-4 py-3 pl-5 text-slate-800">
+                                                <div className="flex w-full items-center gap-3">
+                                                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot} shadow-sm`} />
+                                                    <span className="min-w-0 flex-1 truncate font-medium leading-6">
+                                                        {highlightText(eq.place, searchTerm)}
+                                                    </span>
+                                                    <span className="shrink-0 text-blue-300 transition group-hover:translate-x-0.5 group-hover:text-orange-500">→</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-3 py-1.5 font-bold tabular-nums ring-1 ${style.badge}`}>
+                                                    {eq.magnitude.toFixed(1)}
+                                                    <span className="text-[10px] font-semibold opacity-75">{style.label}</span>
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-700">
+                                                <span className="inline-flex rounded-md bg-blue-50/85 px-2.5 py-1 font-medium tabular-nums text-blue-900 ring-1 ring-blue-100">
+                                                    {eq.depth.toFixed(1)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 font-medium text-slate-600">{formatDateTh(eq.time)}</td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -171,13 +249,13 @@ export default function EarthquakeTable({
 
 function LoadingRows() {
     return (
-        <div className="p-4 space-y-3">
+        <div className="space-y-3 p-4">
             {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex gap-4 animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded flex-[3]" />
-                    <div className="h-4 bg-gray-200 rounded flex-[1]" />
-                    <div className="h-4 bg-gray-200 rounded flex-[1]" />
-                    <div className="h-4 bg-gray-200 rounded flex-[2]" />
+                    <div className="h-4 flex-[3] rounded bg-slate-200" />
+                    <div className="h-4 flex-[1] rounded bg-slate-200" />
+                    <div className="h-4 flex-[1] rounded bg-slate-200" />
+                    <div className="h-4 flex-[2] rounded bg-slate-200" />
                 </div>
             ))}
         </div>

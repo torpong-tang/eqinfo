@@ -76,15 +76,14 @@ export function useEarthquakeFilters(earthquakes: Earthquake[]): UseEarthquakeFi
     }, [filteredEarthquakes, sortBy, sortDir]);
 
     const handleSort = useCallback((field: SortField) => {
-        setSortBy((prev) => {
-            if (prev === field) {
-                setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-                return field;
-            }
-            setSortDir(field === 'place' ? 'asc' : 'desc');
-            return field;
-        });
-    }, []);
+        if (sortBy === field) {
+            setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+            return;
+        }
+
+        setSortBy(field);
+        setSortDir(field === 'place' ? 'asc' : 'desc');
+    }, [sortBy]);
 
     const resetFilters = useCallback(() => {
         setSearchTerm('');
