@@ -17,6 +17,41 @@ import { usePagination } from '@/hooks/usePagination';
 import { DATA_SOURCES, type Earthquake } from '@/types/earthquake';
 import { formatDateTh } from '@/lib/formatters';
 
+const welcomeSourceCardStyles = {
+  'usgs-world': {
+    card: 'from-sky-50/94 via-white/82 to-blue-100/86 text-sky-950 hover:border-sky-300 hover:shadow-sky-900/18 focus:ring-sky-400',
+    accent: 'from-sky-500 to-blue-700',
+    badge: 'bg-sky-100 text-sky-800',
+  },
+  'usgs-asia': {
+    card: 'from-cyan-50/94 via-white/82 to-teal-100/86 text-cyan-950 hover:border-cyan-300 hover:shadow-cyan-900/18 focus:ring-cyan-400',
+    accent: 'from-cyan-500 to-teal-600',
+    badge: 'bg-cyan-100 text-cyan-800',
+  },
+  'geofon-asia': {
+    card: 'from-violet-50/94 via-white/82 to-indigo-100/86 text-violet-950 hover:border-violet-300 hover:shadow-violet-900/18 focus:ring-violet-400',
+    accent: 'from-violet-500 to-indigo-700',
+    badge: 'bg-violet-100 text-violet-800',
+  },
+  bmkg: {
+    card: 'from-orange-50/94 via-white/82 to-amber-100/86 text-orange-950 hover:border-orange-300 hover:shadow-orange-900/18 focus:ring-orange-400',
+    accent: 'from-orange-500 to-amber-600',
+    badge: 'bg-orange-100 text-orange-800',
+  },
+  tmd: {
+    card: 'from-emerald-50/94 via-white/82 to-lime-100/86 text-emerald-950 hover:border-emerald-300 hover:shadow-emerald-900/18 focus:ring-emerald-400',
+    accent: 'from-emerald-500 to-lime-600',
+    badge: 'bg-emerald-100 text-emerald-800',
+  },
+  emsc: {
+    card: 'from-rose-50/94 via-white/82 to-pink-100/86 text-rose-950 hover:border-rose-300 hover:shadow-rose-900/18 focus:ring-rose-400',
+    accent: 'from-rose-500 to-pink-700',
+    badge: 'bg-rose-100 text-rose-800',
+  },
+} as const;
+
+type WelcomeSourceKey = keyof typeof welcomeSourceCardStyles;
+
 export default function Home() {
   const {
     earthquakes,
@@ -149,15 +184,40 @@ export default function Home() {
                   เลือกแหล่งข้อมูลเพื่อดูข้อมูลแผ่นดินไหวล่าสุดบนแผนที่
                 </p>
                 <div className="mt-6 grid gap-2 text-left sm:grid-cols-2 lg:grid-cols-3">
-                  {DATA_SOURCES.map((source) => (
-                    <div
-                      key={source.key}
-                      className="rounded-lg border border-white/70 bg-white/68 px-3 py-2 text-sm text-blue-950 shadow-sm backdrop-blur"
-                    >
-                      <div className="truncate font-semibold">{source.emoji} {source.label}</div>
-                      <div className="mt-0.5 text-xs text-slate-600">{source.timeRange}</div>
-                    </div>
-                  ))}
+                  {DATA_SOURCES.map((source) => {
+                    const sourceKey = source.key as WelcomeSourceKey;
+                    const sourceStyle = welcomeSourceCardStyles[sourceKey];
+
+                    return (
+                      <button
+                        type="button"
+                        key={sourceKey}
+                        onClick={() => changeSource(source.key)}
+                        disabled={isLoading}
+                        className={`group relative overflow-hidden rounded-xl border border-white/70 bg-gradient-to-br px-3 py-3 text-left text-sm shadow-md shadow-slate-900/10 backdrop-blur transition duration-200 hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${sourceStyle.card}`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${sourceStyle.accent}`}
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={`absolute -right-6 -top-8 h-20 w-20 rounded-full bg-gradient-to-br ${sourceStyle.accent} opacity-12 transition group-hover:scale-125 group-hover:opacity-20`}
+                        />
+                        <div className="relative flex items-start gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/72 text-2xl shadow-sm transition group-hover:scale-110">
+                            {source.emoji}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate font-bold">{source.label}</div>
+                            <div className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${sourceStyle.badge}`}>
+                              {source.timeRange}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

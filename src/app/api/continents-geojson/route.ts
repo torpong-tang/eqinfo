@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { readFile } from 'fs/promises';
+import path from 'path';
 
 type FeatureCollection = {
   type: 'FeatureCollection';
@@ -7,6 +9,7 @@ type FeatureCollection = {
 
 const INDEX_URL = 'https://geojson-maps.kyd.au/countries/110m/index.json';
 const BASE_URL = 'https://geojson-maps.kyd.au/countries/110m/';
+const LOCAL_GEOJSON_PATH = path.join(process.cwd(), 'public', 'data', 'continents-countries.geojson');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let cached: { data: FeatureCollection; at: number } | null = null;
@@ -17,6 +20,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isFeature = (value: unknown): value is { type: 'Feature'; properties?: unknown } =>
   isRecord(value) && value.type === 'Feature';
+
+const loadLocalContinentsGeoJson = async (): Promise<FeatureCollection> => {
+  const file = await readFile(LOCAL_GEOJSON_PATH, 'utf8');
+  const data = JSON.parse(file) as unknown;
+
+  if (!isRecord(data) || data.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
+    return { type: 'FeatureCollection', features: [] };
+  }
+
+  return {
+    type: 'FeatureCollection',
+    features: data.features.filter(isFeature),
+  };
+};
 
 const loadContinentsGeoJson = async (): Promise<FeatureCollection> => {
   const response = await fetch(INDEX_URL);
@@ -64,7 +81,7 @@ export async function GET() {
     }
 
     if (!inflight) {
-      inflight = loadContinentsGeoJson().finally(() => {
+      inflight = loadLocalContinentsGeoJson().catch(() => loadContinentsGeoJson()).finally(() => {
         inflight = null;
       });
     }
