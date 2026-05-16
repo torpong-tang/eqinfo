@@ -140,10 +140,9 @@ export default function Home() {
   const sourceUpdatedAtText = sourceUpdatedAt ? formatDateTh(sourceUpdatedAt) : null;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col" suppressHydrationWarning>
+    <div className={`min-h-screen flex flex-col ${selectedSource ? 'bg-gray-100' : 'bg-blue-950'}`} suppressHydrationWarning>
       <Header
         selectedSource={selectedSource}
-        onSourceChange={changeSource}
         onAboutClick={() => setIsAboutOpen(true)}
         onClearMap={handleClearMap}
         onRefresh={refresh}
@@ -159,8 +158,8 @@ export default function Home() {
 
       <ErrorBanner error={error} onDismiss={dismissError} />
 
-      <div className="flex-1 p-4" suppressHydrationWarning>
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className={selectedSource ? 'flex-1 p-4' : 'flex flex-1'} suppressHydrationWarning>
+        <div className={selectedSource ? 'overflow-hidden rounded-lg bg-white shadow-lg' : 'flex flex-1 overflow-hidden'}>
           {selectedSource ? (
             <Map
               earthquakes={filteredEarthquakes}
@@ -171,16 +170,16 @@ export default function Home() {
               onSelect={(eq) => selectEarthquake(eq)}
             />
           ) : (
-            <div className="welcome-earthquake-bg relative flex h-[70vh] min-h-[500px] items-center justify-center overflow-hidden px-4 py-10">
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(15,23,42,0.34))]" />
-              <div className="relative w-full max-w-3xl rounded-2xl border border-white/55 bg-white/76 px-5 py-7 text-center text-slate-950 shadow-2xl shadow-slate-950/24 backdrop-blur-md sm:px-8">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-950/10 text-5xl ring-1 ring-blue-950/10">
+            <div className="welcome-earthquake-bg relative flex min-h-[calc(100vh-168px)] flex-1 items-center justify-center overflow-hidden px-4 py-10">
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0.58))]" />
+              <div className="relative w-full max-w-3xl px-1 py-4 text-center text-white sm:px-4">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/18 text-5xl shadow-xl shadow-blue-950/20 ring-1 ring-white/30 backdrop-blur-md">
                   🌍
                 </div>
-                <h2 className="text-2xl font-bold text-blue-950 sm:text-3xl">
+                <h2 className="text-2xl font-bold text-white drop-shadow-lg sm:text-3xl">
                   ยินดีต้อนรับสู่ระบบข้อมูลแผ่นดินไหว
                 </h2>
-                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-700 sm:text-base">
+                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-blue-50 drop-shadow sm:text-base">
                   เลือกแหล่งข้อมูลเพื่อดูข้อมูลแผ่นดินไหวล่าสุดบนแผนที่
                 </p>
                 <div className="mt-6 grid gap-2 text-left sm:grid-cols-2 lg:grid-cols-3">
