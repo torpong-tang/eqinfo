@@ -62,7 +62,6 @@ export default function Home() {
     sourceUpdatedAt,
     mapView,
     changeSource,
-    clearAll,
     dismissError,
     refresh,
   } = useEarthquakeData();
@@ -127,12 +126,6 @@ export default function Home() {
     [sortedEarthquakes, goToItemIndex]
   );
 
-  const handleClearMap = useCallback(() => {
-    clearAll();
-    resetFilters();
-    setSelectedModalEq(null);
-    setSelectedEarthquakeId(null);
-  }, [clearAll, resetFilters]);
   const scrollToDetails = useCallback(() => {
     detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
@@ -152,7 +145,6 @@ export default function Home() {
         selectedSource={selectedSource}
         onSourceChange={changeSource}
         onAboutClick={() => setIsAboutOpen(true)}
-        onClearMap={handleClearMap}
         onRefresh={refresh}
         isLoading={isLoading}
         earthquakeCount={earthquakes.length}

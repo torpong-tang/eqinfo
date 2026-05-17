@@ -7,7 +7,6 @@ type ConcreteDataSource = Exclude<DataSource, null>;
 interface HeaderProps {
   selectedSource: DataSource;
   onSourceChange: (source: DataSource) => void;
-  onClearMap: () => void;
   onAboutClick: () => void;
   onRefresh: () => void;
   isLoading: boolean;
@@ -25,7 +24,6 @@ interface HeaderProps {
 export default function Header({
   selectedSource,
   onSourceChange,
-  onClearMap,
   onAboutClick,
   onRefresh,
   isLoading,
@@ -92,12 +90,6 @@ export default function Header({
                   </svg>
                 </div>
                 <button
-                  onClick={onClearMap}
-                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
-                >
-                  🧹 ล้างแผนที่
-                </button>
-                <button
                   onClick={onRefresh}
                   disabled={isLoading}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500 text-white transition-colors duration-200 hover:bg-blue-400 disabled:opacity-60"
@@ -110,9 +102,30 @@ export default function Header({
             )}
             <button
               onClick={onAboutClick}
-              className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded-lg ring-1 ring-white/30 transition-colors duration-200 font-medium text-sm"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-white ring-1 ring-white/30 transition-colors duration-200 hover:bg-white/25"
+              title="About"
+              aria-label="About"
             >
-              About
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M12 11v5M12 8h.01"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                />
+              </svg>
             </button>
             <a
               href="https://2startup.cloud/"
