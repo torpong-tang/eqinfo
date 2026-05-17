@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Map from '@/components/Map';
 import AboutModal from '@/components/AboutModal';
@@ -99,6 +99,7 @@ export default function Home() {
   const [selectedModalEq, setSelectedModalEq] = useState<Earthquake | null>(null);
   const [selectedEarthquakeId, setSelectedEarthquakeId] = useState<string | null>(null);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
 
   // Reset filters when source changes
   useEffect(() => {
@@ -132,6 +133,12 @@ export default function Home() {
     setSelectedModalEq(null);
     setSelectedEarthquakeId(null);
   }, [clearAll, resetFilters]);
+  const scrollToDetails = useCallback(() => {
+    detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  const scrollToMap = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const lastUpdated = earthquakes.length
     ? formatDateTh(Math.max(...earthquakes.map((eq) => eq.time)))
@@ -143,6 +150,7 @@ export default function Home() {
     <div className={`min-h-screen flex flex-col ${selectedSource ? 'bg-gray-100' : 'bg-blue-950'}`} suppressHydrationWarning>
       <Header
         selectedSource={selectedSource}
+        onSourceChange={changeSource}
         onAboutClick={() => setIsAboutOpen(true)}
         onClearMap={handleClearMap}
         onRefresh={refresh}
@@ -161,14 +169,28 @@ export default function Home() {
       <div className={selectedSource ? 'flex-1 p-4' : 'flex flex-1'} suppressHydrationWarning>
         <div className={selectedSource ? 'overflow-hidden rounded-lg bg-white shadow-lg' : 'flex flex-1 overflow-hidden'}>
           {selectedSource ? (
-            <Map
-              earthquakes={filteredEarthquakes}
-              center={mapView.center}
-              zoom={mapView.zoom}
-              selectedSource={selectedSource}
-              selectedEarthquakeId={selectedEarthquakeId}
-              onSelect={(eq) => selectEarthquake(eq)}
-            />
+            <div>
+              <div className="flex items-center justify-end border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
+                <button
+                  type="button"
+                  onClick={scrollToDetails}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+                >
+                  ดูรายละเอียด
+                  <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4">
+                    <path d="M8 3v10m0 0 4-4m-4 4L4 9" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                  </svg>
+                </button>
+              </div>
+              <Map
+                earthquakes={filteredEarthquakes}
+                center={mapView.center}
+                zoom={mapView.zoom}
+                selectedSource={selectedSource}
+                selectedEarthquakeId={selectedEarthquakeId}
+                onSelect={(eq) => selectEarthquake(eq)}
+              />
+            </div>
           ) : (
             <div className="welcome-earthquake-bg relative flex min-h-[calc(100vh-168px)] flex-1 items-center justify-center overflow-hidden px-4 py-10">
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0.58))]" />
@@ -225,9 +247,21 @@ export default function Home() {
       </div>
 
       {selectedSource && (
-        <div className="relative px-4 pb-6">
+        <div ref={detailsRef} className="relative scroll-mt-4 px-4 pb-6">
           <div className="pointer-events-none absolute inset-x-4 top-0 h-64 rounded-lg bg-[radial-gradient(circle_at_20%_10%,rgba(37,99,235,0.22),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(249,115,22,0.20),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.08),rgba(255,255,255,0))]" />
           <div className="relative space-y-4">
+          <div className="flex justify-end pt-4">
+            <button
+              type="button"
+              onClick={scrollToMap}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              ดูแผนที่
+              <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4">
+                <path d="M8 13V3m0 0 4 4M8 3 4 7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+              </svg>
+            </button>
+          </div>
           <SituationSummary
             earthquakes={earthquakes}
           />
