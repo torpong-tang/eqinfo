@@ -11,7 +11,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-prompt);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -19,7 +19,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), "Noto Sans Thai", "Sarabun", sans-serif;
+  font-family: var(--font-prompt), "Noto Sans Thai", "Sarabun", sans-serif;
 }
 
 .welcome-earthquake-bg {

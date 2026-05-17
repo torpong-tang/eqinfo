@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Prompt } from "next/font/google";
 import "./globals.css";
 import ApiBasePathPatch from "@/components/ApiBasePathPatch";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const prompt = Prompt({
+  variable: "--font-prompt",
+  subsets: ["thai", "latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   preload: false,
 });
 
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="th" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${prompt.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <ApiBasePathPatch />
