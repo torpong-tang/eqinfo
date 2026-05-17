@@ -39,10 +39,10 @@ const highlightText = (text: string, term: string): ReactNode => {
 };
 
 const COLUMNS = [
-    ['place', 'สถานที่', 'w-[520px] min-w-[520px]'],
-    ['magnitude', 'ขนาด', 'w-[150px] min-w-[150px]'],
-    ['depth', 'ความลึก (กม.)', 'w-[170px] min-w-[170px]'],
-    ['time', 'วันที่/เวลา', 'w-[220px] min-w-[220px]'],
+    ['place', 'สถานที่', 'w-[46%] min-w-[260px]'],
+    ['magnitude', 'ขนาด', 'w-[16%] min-w-[110px]'],
+    ['depth', 'ความลึก (กม.)', 'w-[18%] min-w-[130px]'],
+    ['time', 'วันที่/เวลา', 'w-[20%] min-w-[170px]'],
 ] as const;
 
 const getMagnitudeStyle = (magnitude: number) => {
@@ -157,16 +157,16 @@ export default function EarthquakeTable({
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overscroll-x-contain">
                 {isLoading ? (
                     <LoadingRows />
                 ) : (
-                    <table className="w-full min-w-[1060px] table-fixed text-sm">
+                    <table className="min-w-full table-auto text-sm">
                         <colgroup>
-                            <col className="w-[520px]" />
-                            <col className="w-[150px]" />
-                            <col className="w-[170px]" />
-                            <col className="w-[220px]" />
+                            <col className="w-[46%]" />
+                            <col className="w-[16%]" />
+                            <col className="w-[18%]" />
+                            <col className="w-[20%]" />
                         </colgroup>
                         <thead className="bg-blue-950/90 text-white backdrop-blur">
                             <tr>
@@ -214,10 +214,10 @@ export default function EarthquakeTable({
                                                 }
                                             }}
                                         >
-                                            <td className="w-[520px] min-w-[520px] px-4 py-3 pl-5 text-slate-800">
-                                                <div className="flex w-full items-center gap-3">
+                                            <td className="min-w-[260px] px-4 py-3 pl-5 text-slate-800">
+                                                <div className="flex w-full min-w-0 items-center gap-3">
                                                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot} shadow-sm`} />
-                                                    <span className="min-w-0 flex-1 truncate font-medium leading-6">
+                                                    <span className="min-w-0 flex-1 break-words font-medium leading-6">
                                                         {highlightText(eq.place, searchTerm)}
                                                     </span>
                                                     <span className="shrink-0 text-blue-300 transition group-hover:translate-x-0.5 group-hover:text-orange-500">→</span>
@@ -234,7 +234,7 @@ export default function EarthquakeTable({
                                                     {eq.depth.toFixed(1)}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 font-medium text-slate-600">{formatDateTh(eq.time)}</td>
+                                            <td className="min-w-[170px] px-4 py-3 font-medium text-slate-600">{formatDateTh(eq.time)}</td>
                                         </tr>
                                     );
                                 })
