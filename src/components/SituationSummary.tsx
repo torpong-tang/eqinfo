@@ -68,7 +68,7 @@ const getSeverityLabel = (magnitude: number) => {
 export default function SituationSummary({
   earthquakes,
 }: SituationSummaryProps) {
-  const [isThailandOpen, setIsThailandOpen] = useState(false);
+  const [isThailandOpen, setIsThailandOpen] = useState(true);
   const highCount = earthquakes.filter((eq) => eq.magnitude >= 5).length;
   const latest = earthquakes.length
     ? earthquakes.reduce((current, eq) => (eq.time > current.time ? eq : current), earthquakes[0])
@@ -131,31 +131,36 @@ export default function SituationSummary({
         </div>
 
         {nearestByPoint.some((item) => item.nearest) && (
-          <div className="mt-4 rounded-xl border border-white/60 bg-white/62 p-4 shadow-sm backdrop-blur">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="font-semibold text-blue-950">ใกล้ประเทศไทยรอบทิศ</h3>
-                <p className="text-xs text-slate-600">
+          <div className="mt-4 overflow-hidden rounded-xl border border-blue-100/80 bg-white/72 shadow-lg shadow-blue-950/10 backdrop-blur">
+            <div className="flex flex-col gap-3 bg-[linear-gradient(135deg,rgba(30,64,175,0.96),rgba(14,165,233,0.72)_58%,rgba(249,115,22,0.72))] px-4 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/16 text-xl ring-1 ring-white/30">
+                  ⊕
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">ใกล้ประเทศไทย</h3>
+                  <p className="mt-1 text-xs leading-5 text-blue-50/90">
                   แสดงเหตุการณ์ที่ใกล้จุดอ้างอิงในไทยแต่ละตำแหน่ง พร้อมขนาดและระดับความรุนแรง
-                </p>
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsThailandOpen((value) => !value)}
                 aria-expanded={isThailandOpen}
-                aria-label={isThailandOpen ? 'ยุบส่วนใกล้ประเทศไทยรอบทิศ' : 'ขยายส่วนใกล้ประเทศไทยรอบทิศ'}
+                aria-label={isThailandOpen ? 'ยุบส่วนใกล้ประเทศไทย' : 'ขยายส่วนใกล้ประเทศไทย'}
                 title={isThailandOpen ? 'ยุบ' : 'ขยาย'}
-                className="inline-flex h-9 w-9 items-center justify-center self-start rounded-lg bg-blue-700 text-base font-bold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300 sm:self-auto"
+                className="inline-flex h-9 w-9 items-center justify-center self-start rounded-lg bg-white/16 text-base font-bold text-white ring-1 ring-white/30 shadow-sm transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/60 sm:self-auto"
               >
                 <span aria-hidden="true">{isThailandOpen ? '↑' : '↓'}</span>
               </button>
             </div>
 
-            <div className={`mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4 ${isThailandOpen ? '' : 'hidden'}`}>
+            <div className={`grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4 ${isThailandOpen ? '' : 'hidden'}`}>
               {nearestByPoint.map(({ nearest, pointName }) => {
                 if (!nearest) {
                   return (
-                    <div key={pointName} className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-100">
+                    <div key={pointName} className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
                       <div className="text-xs font-semibold text-slate-500">{pointName}</div>
                       <div className="mt-2 text-sm text-slate-500">ยังไม่มีข้อมูล</div>
                     </div>
@@ -167,24 +172,26 @@ export default function SituationSummary({
                 return (
                   <div
                     key={pointName}
-                    className="rounded-lg bg-gradient-to-br from-blue-50/95 to-orange-50/80 p-3 ring-1 ring-blue-100"
+                    className="group rounded-xl border border-white/70 bg-gradient-to-br from-white via-blue-50/90 to-orange-50/80 p-3 shadow-sm ring-1 ring-blue-100 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-950/10"
                   >
-                    <div className="text-xs font-semibold text-blue-900">{pointName}</div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-lg font-bold text-blue-950">
-                        M{nearest.earthquake.magnitude.toFixed(1)}
-                      </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs font-semibold text-blue-900">ใกล้ {pointName}</div>
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${severity.className}`}>
                         {severity.label}
                       </span>
                     </div>
-                    <div className="mt-1 text-sm font-semibold text-orange-700">
-                      {Math.round(nearest.distance).toLocaleString('th-TH')} กม.
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <span className="text-2xl font-black leading-none text-blue-950">
+                        M{nearest.earthquake.magnitude.toFixed(1)}
+                      </span>
+                      <span className="rounded-lg bg-white/78 px-2.5 py-1 text-sm font-bold text-orange-700 ring-1 ring-orange-100">
+                        {Math.round(nearest.distance).toLocaleString('th-TH')} กม.
+                      </span>
                     </div>
-                    <div className="mt-1 text-xs font-medium text-blue-800">
+                    <div className="mt-3 text-xs font-medium text-blue-800">
                       {formatDateTh(nearest.earthquake.time)}
                     </div>
-                    <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-700">
+                    <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-700 group-hover:text-slate-900">
                       {nearest.earthquake.place}
                     </div>
                   </div>

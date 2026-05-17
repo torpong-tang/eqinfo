@@ -257,7 +257,7 @@ export default function Home() {
           <SituationSummary
             earthquakes={earthquakes}
           />
-          <UsageStats isLoading={isStatsLoading} stats={stats} />
+          <UsageStats isLoading={isStatsLoading} stats={stats} selectedSource={selectedSource} />
           <EarthquakeTable
             earthquakes={pagedItems}
             totalCount={earthquakes.length}
