@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "NODE_PATH=./node_modules next dev --webpack",
     "build": "NODE_PATH=./node_modules next build",
+    "postbuild": "mkdir -p .next/standalone/.next && rm -rf .next/standalone/.next/static .next/standalone/public && cp -R .next/static .next/standalone/.next/static && cp -R public .next/standalone/public",
     "start": "NODE_PATH=./node_modules next start",
     "lint": "eslint",
     "test": "vitest run",
